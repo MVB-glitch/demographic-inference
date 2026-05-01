@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment & secrets
+.env
+
+# Data (keep sample, ignore real datasets)
+data/*.csv
+!data/sample_users.csv
+data/*.xlsx
+data/*.json
+
+# Output files
+results/
+*.xlsx
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Checkpoints
+checkpoints/
