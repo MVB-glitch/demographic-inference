@@ -78,9 +78,14 @@ pip install -r requirements.txt
 # Or install as a package (enables the `demoinfer` command)
 pip install -e .
 
-# Configure your API key
-copy .env.example .env
-# Edit .env and add your GEMINI_API_KEY
+# Create .env file
+New-Item .env -ItemType File
+
+# Open it in Notepad
+notepad .env
+
+# Add your API key in this format, then save and close:
+# GEMINI_API_KEY=your_api_key_here
 ```
 
 ## Usage
