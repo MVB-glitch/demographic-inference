@@ -6,8 +6,11 @@ Two extraction functions:
 1. extract_location_evidence() — Returns DST mass functions for location (K/NK/Omega)
    with confidence scores for 4 independent evidence sources.
 2. extract_demographics_evidence() — Returns mass functions for age and gender.
+
+Uses the google-genai SDK (replaces deprecated google.generativeai).
 """
 
+import io
 import json
 import time
 from typing import Optional
@@ -19,24 +22,43 @@ from .data_loader import load_local_image
 from .dst_engine import validate_mass
 
 
+def _pil_image_to_part(img: Image.Image):
+    """Convert a PIL Image to a google-genai types.Part for multimodal content."""
+    from google.genai import types
+
+    buf = io.BytesIO()
+    # Use the image's original format if available, otherwise default to PNG
+    fmt = img.format or "PNG"
+    mime_map = {
+        "JPEG": "image/jpeg",
+        "JPG": "image/jpeg",
+        "PNG": "image/png",
+        "GIF": "image/gif",
+        "WEBP": "image/webp",
+    }
+    mime_type = mime_map.get(fmt.upper(), "image/png")
+    save_fmt = "PNG" if fmt.upper() not in ("JPEG", "JPG", "PNG", "GIF", "WEBP") else fmt.upper()
+    if save_fmt == "JPG":
+        save_fmt = "JPEG"
+
+    img.save(buf, format=save_fmt)
+    return types.Part.from_bytes(data=buf.getvalue(), mime_type=mime_type)
+
+
 class LLMExtractor:
     """Wraps the Gemini API for evidence extraction."""
 
     def __init__(self, config: PipelineConfig):
         self.config = config
-        self._model = None
+        self._client = None
 
     @property
-    def model(self):
-        """Lazy-initialize the Gemini model."""
-        if self._model is None:
-            import google.generativeai as genai
-            genai.configure(api_key=self.config.api_key)
-            self._model = genai.GenerativeModel(
-                self.config.model_name,
-                generation_config={"response_mime_type": "application/json"},
-            )
-        return self._model
+    def client(self):
+        """Lazy-initialize the google-genai Client."""
+        if self._client is None:
+            from google import genai
+            self._client = genai.Client(api_key=self.config.api_key)
+        return self._client
 
     def _load_user_images(self, user: dict) -> list[Image.Image]:
         """Load all available images for a user (profile + post images)."""
@@ -61,11 +83,33 @@ class LLMExtractor:
 
         return images
 
-    def _call_with_retry(self, payload: list, context_label: str = "") -> Optional[dict]:
-        """Call Gemini API with retry logic for rate limits and transient errors."""
+    def _call_with_retry(self, prompt: str, images: list[Image.Image], context_label: str = "") -> Optional[dict]:
+        """Call Gemini API with retry logic for rate limits and transient errors.
+
+        Args:
+            prompt: The text prompt to send.
+            images: List of PIL Images to include as multimodal content.
+            context_label: Label for log messages (e.g. "Location", "Demographics").
+
+        Returns:
+            Parsed JSON dict from the model response, or None if all retries exhausted.
+        """
+        from google.genai import types
+
+        # Build the contents list: text prompt + image parts
+        contents = [prompt] + [_pil_image_to_part(img) for img in images]
+
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+        )
+
         for attempt in range(self.config.max_retries):
             try:
-                response = self.model.generate_content(payload)
+                response = self.client.models.generate_content(
+                    model=self.config.model_name,
+                    contents=contents,
+                    config=config,
+                )
                 return json.loads(response.text)
             except Exception as e:
                 error_msg = str(e)
@@ -181,9 +225,7 @@ mass_C_bio = {{"K":0.00,"NK":0.00,"Omega":1.00}}
 """
 
         images = self._load_user_images(user)
-        payload = [prompt] + images
-
-        result = self._call_with_retry(payload, "Location")
+        result = self._call_with_retry(prompt, images, "Location")
 
         if result is None:
             return self._default_location_evidence()
@@ -273,9 +315,7 @@ Posts: {posts_text}
 """
 
         images = self._load_user_images(user)
-        payload = [prompt] + images
-
-        result = self._call_with_retry(payload, "Demographics")
+        result = self._call_with_retry(prompt, images, "Demographics")
 
         if result is None:
             return self._default_demographics_evidence()
