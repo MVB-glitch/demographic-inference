@@ -114,6 +114,7 @@ def apply_discount(mass: dict, alpha: float) -> dict:
     Returns:
         Discounted mass function.
     """
+    mass = validate_mass(mass)
     alpha = max(0.0, min(1.0, alpha))  # Clamp to [0, 1]
 
     discounted = {}
