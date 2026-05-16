@@ -102,6 +102,10 @@ demoinfer --csv data/users.csv --images data/images/ --limit 10 --batch-size 5
 # Export as JSON
 demoinfer --csv data/users.csv --format json --output results.json
 
+# Prepare the QueryChat/Shiny explorer from JSON output
+python querychat_explorer/prepare_querychat_data.py results.json
+shiny run --reload querychat_explorer/app.py
+
 # Start fresh (ignore checkpoint)
 demoinfer --csv data/users.csv --no-resume
 

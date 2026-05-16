@@ -29,6 +29,8 @@ data/*.json
 
 # Output files
 results/
+outputs/
+/results.json
 *.xlsx
 *.log
 

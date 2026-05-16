@@ -1,0 +1,6 @@
+querychat[viz] @ git+https://github.com/posit-dev/querychat.git@py/v0.6.0
+chatlas[google]
+duckdb
+pandas
+python-dotenv
+shiny

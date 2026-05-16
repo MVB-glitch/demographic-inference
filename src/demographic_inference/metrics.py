@@ -6,8 +6,12 @@ Computes accuracy for location, age, and gender predictions.
 Exports results to Excel, CSV, or JSON.
 """
 
-import pandas as pd
+import json
 from typing import Optional
+
+import pandas as pd
+
+from .querychat_export import build_querychat_payload
 
 
 def compute_location_accuracy(
@@ -171,6 +175,7 @@ def export_results(
     results: list[dict],
     output_path: str,
     output_format: str = "xlsx",
+    kanto_prefectures: Optional[list[str]] = None,
 ):
     """
     Export results to file.
@@ -187,7 +192,13 @@ def export_results(
     elif output_format == "csv":
         df.to_csv(output_path, index=False, encoding="utf-8-sig")
     elif output_format == "json":
-        df.to_json(output_path, orient="records", force_ascii=False, indent=2)
+        payload = build_querychat_payload(
+            results,
+            kanto_prefectures=kanto_prefectures,
+            source_file=output_path,
+        )
+        with open(output_path, "w", encoding="utf-8") as target:
+            json.dump(payload, target, ensure_ascii=False, indent=2)
     else:
         raise ValueError(f"Unsupported format: {output_format}")
 

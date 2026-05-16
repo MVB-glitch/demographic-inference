@@ -125,7 +125,12 @@ def main(argv=None):
     print(f"\n{df_summary.to_string(index=False)}")
 
     # Export
-    export_results(results, config.output_path, config.output_format)
+    export_results(
+        results,
+        config.output_path,
+        config.output_format,
+        kanto_prefectures=config.kanto_prefectures,
+    )
 
 
 if __name__ == "__main__":
